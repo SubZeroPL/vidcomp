@@ -1,0 +1,28 @@
+[project]
+name = "vidcomp"
+version = "0.0.1"
+description = "Video Comparer"
+authors = [
+  {name = "SubZero", email = "subzeropl@gmail.com"}
+]
+readme = "README.md"
+license = {text = "Not open source"}
+requires-python = ">=3.10"
+classifiers = []
+dependencies = []
+
+[tool.comfy]
+PublisherId = "SubZeroPL"
+DisplayName = "vidcomp"
+Icon = ""
+Tags = []
+Repository = "https://github.com/SubZeroPL/vidcomp"
+includes = []
+
+[tool.setuptools.package-data]
+"*" = ["*.*"]
+
+# Use strict defaults
+strict = true
+warn_unreachable = true
+warn_no_return = false
