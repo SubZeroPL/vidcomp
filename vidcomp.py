@@ -11,11 +11,18 @@ class VideoComparator:
             "required": {
                 "video1": ("VIDEO", {"tooltip": "First video for comparison"}),
                 "video2": ("VIDEO", {"tooltip": "Second video for comparison"}),
-                "split": (["horizontal", "vertical"], {"default": "horizontal", "tooltip": "Split direction for comparison"}),
+                "split": (["vertical", "horizontal"], {"default": "vertical", "tooltip": "Split direction for comparison"}),
+                "layout": (["overlap", "side_by_side"], {"default": "overlap", "tooltip": "Layout style for comparison"}),
             },
         }
 
-    def compare(self, video1, video2, split):
-        print("Comparing videos...")
-        print(video1.get_stream_source(), video2.get_stream_source(), split)
-        return {"ui": {"video1_url": [video1.get_stream_source()], "video2_url": [video2.get_stream_source()], "split_value": [split]}}
+    def compare(self, video1, video2, split, layout):
+        print("Passing data to UI...")
+        return {
+            "ui": {
+                "video1_url": [video1.get_stream_source()],
+                "video2_url": [video2.get_stream_source()],
+                "split_value": [split],
+                "layout_value": [layout]
+            }
+        }
