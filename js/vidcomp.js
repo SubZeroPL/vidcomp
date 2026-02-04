@@ -7,7 +7,11 @@ const LAYOUT_SIDE_BY_SIDE = "side_by_side";
 
 let Config = {
     video1_url: "",
+    video1_size: [0, 0],
+    video1_format: "",
     video2_url: "",
+    video2_size: [0, 0],
+    video2_format: "",
     split: SPLIT_VERTICAL,
     layout: LAYOUT_OVERLAY
 };
@@ -17,15 +21,8 @@ app.registerExtension({
     async setup() {
         console.log("Setup complete!")
     },
-    async beforeRegisterNodeDef(nodeType, nodeData, app) {
-        if (nodeType.comfyClass !== "VideoComparator") return;
-        console.log(`${nodeType.comfyClass} beforeRegisterNodeDef`)
-        console.log(nodeType)
-        console.log(nodeData)
-    },
     async nodeCreated(node) {
         if (node.comfyClass !== "VideoComparator") return;
-        console.log(`${node.comfyClass} node created`);
         const previewDiv = setup_preview(true);
         node.addDOMWidget("preview-widget", "VIDEO", previewDiv);
 
@@ -34,68 +31,111 @@ app.registerExtension({
 })
 
 function setup_preview(first = false) {
-    // main preview div
-    const previewDiv = document.querySelector("#vidcomp-preview-div") ?? document.createElement("div");
-    previewDiv.id = "vidcomp-preview-div";
-    previewDiv.style.width = "100%";
-    previewDiv.style.height = "100%";
-    previewDiv.style.top = "0px";
-    previewDiv.style.left = "0px";
-    previewDiv.style.position = "absolute";
-    if (first) return previewDiv;
-    // video 1 div
-    const vid1_div = document.querySelector("#vidcomp-vid1-div") ?? document.createElement("div");
-    vid1_div.id = "vidcomp-vid1-div";
-    vid1_div.style.position = "absolute";
-    vid1_div.style.left = "0px";
-    vid1_div.style.top = "0px";
-    vid1_div.style.width = Config.split === SPLIT_VERTICAL ? "50%" : "100%";
-    vid1_div.style.height = Config.split === SPLIT_VERTICAL ? "100%" : "50%";
-    vid1_div.style.cursor = Config.split === SPLIT_VERTICAL ? "col-resize" : "row-resize";
-    // video 2 div
-    const vid2_div = document.querySelector("#vidcomp-vid2-div") ?? document.createElement("div");
-    vid2_div.id = "vidcomp-vid2-div";
-    vid2_div.style.position = "absolute";
-    vid2_div.style.left = "0px";
-    vid2_div.style.top = "0px";
-    vid2_div.style.width = "100%";
-    vid2_div.style.height = "100%";
-    vid2_div.style.cursor = Config.split === SPLIT_VERTICAL ? "col-resize" : "row-resize";
-    // video 1 element
-    const vid1 = document.querySelector("#vidcomp-vid1") ?? document.createElement("video");
-    vid1.id = "vidcomp-vid1";
-    setup_video(vid1);
-    vid1.src = Config.video1_url;
-    // video 2 element
-    const vid2 = document.querySelector("#vidcomp-vid2") ?? document.createElement("video");
-    vid2.id = "vidcomp-vid2";
-    setup_video(vid2);
-    vid2.src = Config.video2_url;
-    // connect elements
-    vid1_div.appendChild(vid1);
-    vid2_div.appendChild(vid2);
-    previewDiv.appendChild(vid2_div);
-    previewDiv.appendChild(vid1_div);
-    return previewDiv;
+    const video_preview = document.createElement("div");
+    video_preview.id = "video-preview";
+
+    const vid_div_1 = document.createElement("div");
+    vid_div_1.id = "vid-div-1";
+    vid_div_1.style.position = "absolute";
+    vid_div_1.style.top = "0";
+    vid_div_1.style.left = "0";
+    vid_div_1.style.cursor = "col-resize";
+
+    const vid_div_2 = document.createElement("div");
+    vid_div_2.id = "vid-div-2";
+    vid_div_2.style.position = "absolute";
+    vid_div_2.style.top = "0";
+    vid_div_2.style.left = "0";
+    vid_div_2.style.cursor = "col-resize";
+
+    const video_1 = document.createElement("video");
+    video_1.id = "video-1";
+    video_1.loop = true;
+    video_1.muted = true;
+    video_1.autoplay = true;
+    video_1.disablePictureInPicture = true;
+    video_1.width = 212;
+    video_1.height = 240;
+    video_1.style.objectFit = "cover";
+    video_1.style.objectPosition = "left top";
+    const source_1 = document.createElement("source");
+    source_1.src = Config.video1_url;
+    source_1.type = "video/mp4";
+    video_1.appendChild(source_1);
+    
+    const video_2 = document.createElement("video");
+    video_2.id = "video-2";
+    video_2.loop = true;
+    video_2.muted = true;
+    video_2.autoplay = true;
+    video_2.disablePictureInPicture = true;
+    video_2.width = 424;
+    video_2.height = 240;
+    video_2.style.objectFit = "cover";
+    const source_2 = document.createElement("source");
+    source_2.src = Config.video2_url;
+    source_2.type = "video/mp4";
+    video_2.appendChild(source_2);
+    
+    vid_div_1.appendChild(video_1);
+    vid_div_2.appendChild(video_2);
+    video_preview.appendChild(vid_div_2);
+    video_preview.appendChild(vid_div_1);
+
+    video_preview.addEventListener("pointerclick", play_pause);
+
+    let isDragging = false;
+    let moved = false;
+    video_preview.addEventListener("pointerdown", (e) => {
+        if (e.isPrimary === false) return;
+        if (e.button !== 0) return; // only left button
+        e.stopPropagation();
+        isDragging = true;
+    });
+    video_preview.addEventListener("pointerup", (e) => {
+        if (e.isPrimary === false) return;
+        if (e.button !== 0) return; // only left button
+        e.stopPropagation();
+        if (moved) {
+            moved = false;
+        } else {
+            play_pause();
+        }
+        isDragging = false;
+    });
+    video_preview.addEventListener("pointermove", (e) => {
+        if (e.isPrimary === false) return;
+        if (e.button !== -1) return; // button still
+        if (isDragging) {
+            e.stopPropagation();
+            video_1.width = e.offsetX;
+            moved = true;
+        }
+    });
+
+    function play_pause() {
+        if (video_1.paused) {
+            video_1.play();
+        } else {
+            video_1.pause();
+        }
+        if (video_2.paused) {
+            video_2.play();
+        } else {
+            video_2.pause();
+        }
+    }
+
+    return video_preview;
 }
 
-function setup_video(vid, id = 1) {
-    vid.controls = false;
-    vid.muted = true;
-    vid.style.position = "absolute";
-    vid.style.width = "100%";
-    vid.style.height = "100%";
-    vid.style.top = "0px";
-    vid.style.left = "0px";
-    vid.style.objectFit = "contain";
-    const v2_hpos = Config.split === SPLIT_VERTICAL ? "right" : "left";
-    const v2_vpos = Config.split === SPLIT_VERTICAL ? "top" : "bottom";
-    const v2_pos = Config.layout === LAYOUT_OVERLAY ? "left top" : `${v2_hpos} ${v2_vpos}`;
-    vid.style.objectPosition = vid.id === "vidcomp-vid1" ? "left top" : `${v2_pos}`;
-    vid.style.border = "1px solid black";
-    vid.autoplay = true;
-    vid.loop = true;
-    vid.overflow = "hidden";
+function update_preview() {
+    const video_1 = document.querySelector("video#video-1");
+    const video_2 = document.querySelector("video#video-2");
+    video_1.querySelector("source").src = Config.video1_url;
+    video_2.querySelector("source").src = Config.video2_url;
+    video_1.load();
+    video_2.load();
 }
 
 function nodeOnExecuted(output) {
@@ -105,14 +145,22 @@ function nodeOnExecuted(output) {
     const url2 = encodeURIComponent(url2_segments[url2_segments.length - 1]);
     const video1_url = `/api/view?type=input&filename=${url1}`;
     const video2_url = `/api/view?type=input&filename=${url2}`;
+    const video1_size = output.video1_size[0];
+    const video2_size = output.video2_size[0];
+    const video1_format = output.video1_format[0];
+    const video2_format = output.video2_format[0];
     const split_value = output.split_value[0];
     const layout_value = output.layout_value[0];
     Config = {
         video1_url: video1_url,
         video2_url: video2_url,
+        video1_size: video1_size,
+        video2_size: video2_size,
+        video1_format: video1_format,
+        video2_format: video2_format,
         split: split_value,
         layout: layout_value
     };
-    console.log("Data: ", Config);
-    setup_preview();
+    console.log("VideoComparator Config:", Config);
+    update_preview();
 }

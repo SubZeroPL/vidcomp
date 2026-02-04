@@ -21,7 +21,11 @@ class VideoComparator:
         return {
             "ui": {
                 "video1_url": [video1.get_stream_source()],
+                "video1_size": [video1.get_dimensions()],
+                "video1_format": [video1.get_container_format()],
                 "video2_url": [video2.get_stream_source()],
+                "video2_size": [video2.get_dimensions()],
+                "video2_format": [video2.get_container_format()],
                 "split_value": [split],
                 "layout_value": [layout]
             }
