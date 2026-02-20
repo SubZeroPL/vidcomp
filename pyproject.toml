@@ -11,6 +11,10 @@ requires-python = ">=3.10"
 classifiers = []
 dependencies = []
 
+[project.urls]
+Repository = "https://github.com/SubZeroPL/vidcomp"
+#  Used by Comfy Registry https://registry.comfy.org
+
 [tool.comfy]
 PublisherId = "SubZeroPL"
 DisplayName = "vidcomp"
@@ -18,11 +22,3 @@ Icon = ""
 Tags = []
 Repository = "https://github.com/SubZeroPL/vidcomp"
 includes = []
-
-[tool.setuptools.package-data]
-"*" = ["*.*"]
-
-# Use strict defaults
-strict = true
-warn_unreachable = true
-warn_no_return = false
