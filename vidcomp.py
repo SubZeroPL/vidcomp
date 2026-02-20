@@ -1,6 +1,6 @@
 class VideoComparator:
-    CATEGORY = "Comparison"
-    DESCRIPTION = "Compares two videos side by side."
+    CATEGORY = "video"
+    DESCRIPTION = "Video Comparer node for ComfyUI. Compares two input videos side by side or top and bottom, allowing to easily spot differences between them. Supports various video formats and customizable split options."
     FUNCTION = "compare"
     RETURN_TYPES = ()
     OUTPUT_NODE = True
@@ -11,12 +11,11 @@ class VideoComparator:
             "required": {
                 "video1": ("VIDEO", {"tooltip": "First video for comparison"}),
                 "video2": ("VIDEO", {"tooltip": "Second video for comparison"}),
-                "split": (["vertical", "horizontal"], {"default": "vertical", "tooltip": "Split direction for comparison"}),
-                "layout": (["overlap", "side_by_side"], {"default": "overlap", "tooltip": "Layout style for comparison"}),
+                "split": (["vertical", "horizontal"], {"default": "vertical", "tooltip": "Split direction for comparison"})
             },
         }
 
-    def compare(self, video1, video2, split, layout):
+    def compare(self, video1, video2, split):
         print("Passing data to UI...")
         return {
             "ui": {
@@ -26,7 +25,6 @@ class VideoComparator:
                 "video2_url": [video2.get_stream_source()],
                 "video2_size": [video2.get_dimensions()],
                 "video2_format": [video2.get_container_format()],
-                "split_value": [split],
-                "layout_value": [layout]
+                "split_value": [split]
             }
         }

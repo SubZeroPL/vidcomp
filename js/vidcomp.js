@@ -2,8 +2,6 @@ import { app } from "../../scripts/app.js";
 
 const SPLIT_HORIZONTAL = "horizontal";
 const SPLIT_VERTICAL = "vertical";
-const LAYOUT_OVERLAY = "overlay";
-const LAYOUT_SIDE_BY_SIDE = "side_by_side";
 
 let Config = {
     video1_url: "",
@@ -12,41 +10,63 @@ let Config = {
     video2_url: "",
     video2_size: [0, 0],
     video2_format: "",
-    split: SPLIT_VERTICAL,
-    layout: LAYOUT_OVERLAY
+    split: SPLIT_VERTICAL
 };
 
 app.registerExtension({
     name: "vidcomp",
-    async setup() {
-        console.log("Setup complete!")
-    },
     async nodeCreated(node) {
         if (node.comfyClass !== "VideoComparator") return;
         const previewDiv = setup_preview(true);
         node.addDOMWidget("preview-widget", "VIDEO", previewDiv);
 
         node.onExecuted = nodeOnExecuted;
+        node.resizable = false;
+
+        // React to widget value changes
+        if (node.widgets) {
+            const splitWidget = node.widgets.find(w => w.name === "split");
+            if (splitWidget) {
+                const originalCallback = splitWidget.callback;
+                splitWidget.callback = function (value) {
+                    Config.split = value;
+                    update_preview(node);
+                    // Call original callback if it exists
+                    if (originalCallback) {
+                        originalCallback.call(this, value);
+                    }
+                };
+            }
+        }
     }
 })
 
 function setup_preview(first = false) {
+    const horizontal = Config.split === SPLIT_HORIZONTAL;
+
     const video_preview = document.createElement("div");
     video_preview.id = "video-preview";
+
+    const preview_container = document.createElement("div");
+    preview_container.id = "preview-container";
+    preview_container.style.position = "relative";
+    preview_container.style.width = Config.video1_size[0] + "px";
+    preview_container.style.height = Config.video1_size[1] + "px";
+    video_preview.appendChild(preview_container);
 
     const vid_div_1 = document.createElement("div");
     vid_div_1.id = "vid-div-1";
     vid_div_1.style.position = "absolute";
     vid_div_1.style.top = "0";
     vid_div_1.style.left = "0";
-    vid_div_1.style.cursor = "col-resize";
+    vid_div_1.style.cursor = horizontal ? "row-resize" : "col-resize";
 
     const vid_div_2 = document.createElement("div");
     vid_div_2.id = "vid-div-2";
     vid_div_2.style.position = "absolute";
     vid_div_2.style.top = "0";
     vid_div_2.style.left = "0";
-    vid_div_2.style.cursor = "col-resize";
+    vid_div_2.style.cursor = horizontal ? "row-resize" : "col-resize";
 
     const video_1 = document.createElement("video");
     video_1.id = "video-1";
@@ -54,13 +74,18 @@ function setup_preview(first = false) {
     video_1.muted = true;
     video_1.autoplay = true;
     video_1.disablePictureInPicture = true;
-    video_1.width = 212;
-    video_1.height = 240;
+    if (Config.split === SPLIT_HORIZONTAL) {
+        video_1.width = Config.video1_size[0];
+        video_1.height = Config.video1_size[1] / 2;
+    } else {
+        video_1.width = Config.video1_size[0] / 2;
+        video_1.height = Config.video1_size[1];
+    }
     video_1.style.objectFit = "cover";
     video_1.style.objectPosition = "left top";
     const source_1 = document.createElement("source");
     source_1.src = Config.video1_url;
-    source_1.type = "video/mp4";
+    source_1.type = `video/${Config.video1_format}`;
     video_1.appendChild(source_1);
     
     const video_2 = document.createElement("video");
@@ -69,18 +94,18 @@ function setup_preview(first = false) {
     video_2.muted = true;
     video_2.autoplay = true;
     video_2.disablePictureInPicture = true;
-    video_2.width = 424;
-    video_2.height = 240;
+    video_2.width = Config.video1_size[0];
+    video_2.height = Config.video1_size[1];
     video_2.style.objectFit = "cover";
     const source_2 = document.createElement("source");
     source_2.src = Config.video2_url;
-    source_2.type = "video/mp4";
+    source_2.type = `video/${Config.video2_format}`;
     video_2.appendChild(source_2);
     
     vid_div_1.appendChild(video_1);
     vid_div_2.appendChild(video_2);
-    video_preview.appendChild(vid_div_2);
-    video_preview.appendChild(vid_div_1);
+    preview_container.appendChild(vid_div_2);
+    preview_container.appendChild(vid_div_1);
 
     video_preview.addEventListener("pointerclick", play_pause);
 
@@ -108,7 +133,11 @@ function setup_preview(first = false) {
         if (e.button !== -1) return; // button still
         if (isDragging) {
             e.stopPropagation();
-            video_1.width = e.offsetX;
+            if (Config.split === SPLIT_HORIZONTAL) {
+                video_1.height = e.offsetY;
+            } else {
+                video_1.width = e.offsetX;
+            }
             moved = true;
         }
     });
@@ -129,13 +158,38 @@ function setup_preview(first = false) {
     return video_preview;
 }
 
-function update_preview() {
+function update_preview(node) {
+    const vid_div_1 = document.getElementById("vid-div-1");
+    const vid_div_2 = document.getElementById("vid-div-2");
+    vid_div_1.style.cursor = Config.split === SPLIT_HORIZONTAL ? "row-resize" : "col-resize";
+    vid_div_2.style.cursor = Config.split === SPLIT_HORIZONTAL ? "row-resize" : "col-resize";
     const video_1 = document.querySelector("video#video-1");
     const video_2 = document.querySelector("video#video-2");
-    video_1.querySelector("source").src = Config.video1_url;
-    video_2.querySelector("source").src = Config.video2_url;
+    const source_1 = video_1.querySelector("source");
+    const source_2 = video_2.querySelector("source");
+    source_1.src = Config.video1_url;
+    source_1.type = `video/${Config.video1_format}`;
+    source_2.src = Config.video2_url;
+    source_2.type = `video/${Config.video2_format}`;
+    if (Config.split === SPLIT_HORIZONTAL) {
+        video_1.width = Config.video1_size[0];
+        video_1.height = Config.video1_size[1] / 2;
+    } else {
+        video_1.width = Config.video1_size[0] / 2;
+        video_1.height = Config.video1_size[1];
+    }
+    video_2.width = Config.video1_size[0];
+    video_2.height = Config.video1_size[1];
+    const wasPlaying = !video_1.paused;
     video_1.load();
+    if (!wasPlaying) {
+        video_1.pause();
+    }
     video_2.load();
+    if (!wasPlaying) {
+        video_2.pause();
+    }
+    node.setSize([video_2.width + 20, video_2.height + 100]);
 }
 
 function nodeOnExecuted(output) {
@@ -147,10 +201,9 @@ function nodeOnExecuted(output) {
     const video2_url = `/api/view?type=input&filename=${url2}`;
     const video1_size = output.video1_size[0];
     const video2_size = output.video2_size[0];
-    const video1_format = output.video1_format[0];
-    const video2_format = output.video2_format[0];
+    const video1_format = processVideoFormats(output.video1_format[0], video1_url);
+    const video2_format = processVideoFormats(output.video2_format[0], video2_url);
     const split_value = output.split_value[0];
-    const layout_value = output.layout_value[0];
     Config = {
         video1_url: video1_url,
         video2_url: video2_url,
@@ -158,9 +211,19 @@ function nodeOnExecuted(output) {
         video2_size: video2_size,
         video1_format: video1_format,
         video2_format: video2_format,
-        split: split_value,
-        layout: layout_value
+        split: split_value
     };
-    console.log("VideoComparator Config:", Config);
-    update_preview();
+    update_preview(this);
+}
+
+function processVideoFormats(format, file) {
+    if (format.indexOf(",") !== -1) {
+        const formats = format.split(",").map(f => f.trim());
+        const fileExtension = file.split('.').pop().toLowerCase();
+        if (formats.includes(fileExtension)) {
+            return fileExtension;
+        }
+        return formats[0];
+    }
+    return format.trim();
 }
